@@ -61,7 +61,7 @@ class SnakeExp:
         self.final_angles_state = (-1, -1, -1, -1)
         self.final_strings_state = (-1, -1, -1, -1, -1, -1, -1, -1)
         self.command = []
-        self.file_name = "data" + date.today().__str__() + ".csv"
+        self.file_name = "./Data/data" + date.today().__str__() + ".csv"
         self.data = pd.DataFrame(
             columns=["initial_j_1", "initial_j_2", "initial_j_3", "initial_j_4", "initial_s_1", "initial_s_2",
                      "initial_s_3", "initial_s_4", "initial_s_5", "initial_s_6", "initial_s_7", "initial_s_8",
