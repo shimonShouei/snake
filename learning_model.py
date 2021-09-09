@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 import pandas as pd
@@ -5,10 +6,25 @@ import shap
 import graphviz
 from sklearn import tree
 import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error, r2_score
 
-model = DecisionTreeRegressor(max_depth=5)
+
+def reg_metrics(y_t, y_pred, X_t):
+    rmse = np.sqrt(mean_squared_error(y_t, y_pred))
+    r2 = r2_score(y_t, y_pred)
+
+    # Scikit-learn doesn't have adjusted r-square, hence custom code
+    n = y_pred.shape[0]
+    k = X_t.shape[1]
+    adj_r_sq = 1 - (1 - r2) * (n - 1) / (n - 1 - k)
+
+    return rmse, r2, adj_r_sq
+
+
+model = DecisionTreeRegressor(max_depth=4)
 file_name = "./Data/data2021-08-31.csv"
 data = pd.read_csv(file_name)
+data.round(1)
 for i in range(1, 5):
     data["diff_j_" + i.__str__()] = data["final_j_" + i.__str__()] - data["initial_j_" + i.__str__()]
 X = data[["initial_j_1", "initial_j_2", "initial_j_3", "initial_j_4", "initial_s_1", "initial_s_2",
@@ -18,10 +34,25 @@ X = data[["initial_j_1", "initial_j_2", "initial_j_3", "initial_j_4", "initial_s
 Y = data[["diff_j_" + i.__str__() for i in range(1, 5)]]
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
 for i in range(1, 5):
+
     y = y_train["diff_j_" + i.__str__()]
     model.fit(X_train, y)
     predicted = model.predict(X_test)
-    # score = model.score(predicted.reshape(-1, 1), y_test)
+    df = pd.DataFrame(data=[list(y_test["diff_j_" + i.__str__()]), list(predicted)]).transpose()
+    df.columns = ["test", "pred"]
+    df = df[df["test"] > -10]
+    df = df[df["pred"] > -10]
+    df = df[df["pred"] < 10]
+    df = df[df["test"] < 10]
+    # predicted = predicted[predicted > -10]
+    scores = reg_metrics(df["test"], df["pred"], X_train)
+    plt.plot(df["test"])
+    plt.plot(df["pred"])
+    plt.legend(['test', 'predicted'], loc="lower right")
+    plt.table([["rmse", "r2", "adj_r_sq"], [scores[0], scores[1], scores[2]]], loc="upper center")
+    plt.savefig("./Outputs/evaluating_{}".format(i))
+    plt.clf()
+    # score = model.score(predicted.reshape(-1, 1), y_test["diff_j_" + i.__str__()])
     # print(i, ': ', score)
     dot_data = tree.export_graphviz(model, out_file=None,
                                     feature_names=X_train.columns,
@@ -35,4 +66,13 @@ for i in range(1, 5):
     # visualize the first prediction's explanation
     shap.plots.bar(shap_values, show=False)
     plt.savefig('./Outputs/shap{}.png'.format(i.__str__()))
-
+    plt.clf()
+    x = []
+    y = []
+    for importance, name in sorted(zip(model.feature_importances_, X_train.columns), reverse=True):
+        y.append(name)
+        x.append(importance)
+    fig, ax = plt.subplots(figsize=(25, 8))
+    bars = ax.bar(y, x, width=0.5)
+    plt.savefig("./Outputs/feature_importance_{}".format(i))
+    plt.clf()
