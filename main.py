@@ -32,13 +32,12 @@ class GracefulKiller:
 
 
 _max_PWM = 60
-_max_angle = 30
 _N_joints = 4
 _N_string = _N_joints * 2
 max_tension = 10
 min_tension = 0.3
-max_angl = 15
-min_angl = -15
+max_angl = 20
+min_angl = -20
 
 motor_vel_step_up = 100
 motor_vel_step_down = -100
@@ -72,7 +71,7 @@ class SnakeExp:
 
     def run_experiment(self):
         while not rospy.is_shutdown() and not killer.kill_now:
-            for i in tqdm.tqdm(range(100)):
+            for i in tqdm.tqdm(range(200)):
                 self.middle_check()
                 self.command = random.choice(possible_actions)
                 self.command = Int32MultiArray(data=np.asarray(self.command).astype(int))
@@ -154,19 +153,21 @@ class SnakeExp:
         msg = Int32MultiArray(data=np.zeros(_N_string).astype(int))
         msg.data[ind] = motor_vel_step_up
         msg.data[ind + 1] = motor_vel_step_down
-        self.command = msg
-        self.send_motor_cmd(0.3)
-        rospy.loginfo("Adding angle")
+        while self.current_angles_state[int(ind/2)] < 0:
+            self.command = msg
+            self.send_motor_cmd(0.2)
+            rospy.loginfo("Adding angle")
+            rospy.loginfo(self.current_angles_state[int(ind/2)])
 
     def reduce_angle(self, ind):
         msg = Int32MultiArray(data=np.zeros(_N_string).astype(int))
-        msg.data[ind] = motor_vel_step_down
-        msg.data[ind + 1] = motor_vel_step_up
-        while self.current_angles_state[ind] > 6:
+        msg.data[ind] = motor_vel_step_up
+        msg.data[ind + 1] = motor_vel_step_down
+        while self.current_angles_state[int(ind/2)] > 0:
             self.command = msg
-            self.send_motor_cmd(0.3)
+            self.send_motor_cmd(0.2)
             rospy.loginfo("Reducing angle")
-            rospy.loginfo(self.current_angles_state[ind])
+            rospy.loginfo(self.current_angles_state[int(ind/2)])
 
     def middle_check(self):
         for i in range(len(self.current_strings_state) - 1):
@@ -183,13 +184,13 @@ class SnakeExp:
                 rospy.logwarn("you reach max angle")
                 # self.reduce_tension(2*i)
                 # self.add_tension(2*i+1)
-                self.reduce_angle(i)
+                self.reduce_angle(2*i)
 
             if self.current_angles_state[i] < min_angl:
                 rospy.logwarn("you reach min angle")
                 # self.add_tension(2*i)
                 # self.reduce_tension(2*i+1)
-                self.add_angle(i)
+                self.add_angle(2*i)
 
 
 # def signal_handler(sig, frame):
@@ -209,3 +210,7 @@ if __name__ == '__main__':
     # signal.signal(signal.SIGINT, signal_handler)
     # print('Press Ctrl+C')
     # signal.pause()
+# 0->0,1
+# 1->2,3
+# 2->4,5
+# 3->6,7
