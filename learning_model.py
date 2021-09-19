@@ -1,3 +1,7 @@
+import os
+import asyncio
+import pickle
+
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
@@ -7,8 +11,9 @@ import graphviz
 from sklearn import tree
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn import preprocessing
 from sklearn.tree import _tree
+from dotenv import load_dotenv
+load_dotenv()
 
 
 def tree_to_code(tree, feature_names):
@@ -48,11 +53,13 @@ def reg_metrics(y_t, y_pred, X_t):
 
 
 def export_plots(mod):
+    filename = '{}/trees_files/tree_{}_{}.sav'.format(os.getenv('OUTPUTS_DIR'), mod, i)
+    pickle.dump(model, open(filename, 'wb'))
     plt.plot(df["test"])
     plt.plot(df["pred"])
     plt.legend(['test', 'predicted'], loc="lower right")
     plt.table([["rmse", "r2", "adj_r_sq"], [scores[0], scores[1], scores[2]]], loc="upper center")
-    plt.savefig("./Outputs/evaluating_{}_{}".format(mod, i))
+    plt.savefig("{}/evaluating_{}_{}".format(os.getenv('OUTPUTS_DIR'), mod, i))
     plt.clf()
     # score = model.score(predicted.reshape(-1, 1), y_test["diff_j_" + i.__str__()])
     # print(i, ': ', score)
@@ -62,13 +69,13 @@ def export_plots(mod):
                                     filled=True, rounded=True,
                                     special_characters=True)
     graph = graphviz.Source(dot_data)
-    graph.render("./Outputs/snake_{}_{}".format(mod, i.__str__()))
+    graph.render("{}/snake_{}_{}".format(os.getenv('OUTPUTS_DIR'), mod, i.__str__()))
     explainer = shap.Explainer(model)
     shap_values = explainer(X)
     # visualize the first prediction's explanation
 
     shap.plots.bar(shap_values, show=False)
-    plt.savefig('./Outputs/shap_{}_{}.png'.format(mod, i.__str__()), bbox_inches='tight')
+    plt.savefig('{}/shap_{}_{}.png'.format(os.getenv('OUTPUTS_DIR'), mod, i.__str__()), bbox_inches='tight')
     plt.clf()
     x = []
     y = []
@@ -77,12 +84,12 @@ def export_plots(mod):
         x.append(importance)
     fig, ax = plt.subplots(figsize=(25, 8))
     bars = ax.bar(y, x, width=0.5)
-    plt.savefig("./Outputs/feature_importance_{}_{}".format(mod, i), bbox_inches='tight')
+    plt.savefig("{}feature_importance_{}_{}".format(os.getenv('OUTPUTS_DIR'), mod, i), bbox_inches='tight')
     plt.clf()
 
 
 model = DecisionTreeRegressor(max_depth=4)
-file_name = "./Data/data2021-09-13.csv"
+file_name = "{}/data2021-09-13.csv".format(os.getenv('DATA_DIR'))
 data = pd.read_csv(file_name)
 data.round(1)
 for i in range(1, 5):
@@ -114,9 +121,10 @@ for i in range(1, 5):
     df = df[df["pred"] < 10]
     df = df[df["test"] < 10]
     # predicted = predicted[predicted > -10]
+
     scores = reg_metrics(df["test"], df["pred"], X_train)
     export_plots("j")
-    tree_to_code(model, X_train.columns)
+    # tree_to_code(model, X_train.columns)
 
 # for i in range(1, 5):
 #     y_train_i = y_train["diff_j_" + i.__str__()]
@@ -132,16 +140,16 @@ for i in range(1, 5):
 #     scores = reg_metrics(df["test"], df["pred"], X_train)
 #     export_plots("j")
 #     tree_to_code(model, X_train.columns)
-# for i in range(1, 9):
-#     y_train_i = y_train["diff_s_" + i.__str__()]
-#     model.fit(X_train, y_train_i)
-#     predicted = model.predict(X_test)
-#     df = pd.DataFrame(data=[list(y_test["diff_s_" + i.__str__()]), list(predicted)]).transpose()
-#     df.columns = ["test", "pred"]
-#     df = df[df["test"] > -10]
-#     df = df[df["pred"] > -10]
-#     df = df[df["pred"] < 10]
-#     df = df[df["test"] < 10]
-#     # predicted = predicted[predicted > -10]
-#     scores = reg_metrics(df["test"], df["pred"], X_train)
-#     export_plots("s")
+for i in range(1, 9):
+    y_train_i = y_train["diff_s_" + i.__str__()]
+    model.fit(X_train, y_train_i)
+    predicted = model.predict(X_test)
+    df = pd.DataFrame(data=[list(y_test["diff_s_" + i.__str__()]), list(predicted)]).transpose()
+    df.columns = ["test", "pred"]
+    df = df[df["test"] > -10]
+    df = df[df["pred"] > -10]
+    df = df[df["pred"] < 10]
+    df = df[df["test"] < 10]
+    # predicted = predicted[predicted > -10]
+    scores = reg_metrics(df["test"], df["pred"], X_train)
+    export_plots("s")
