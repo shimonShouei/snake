@@ -8,6 +8,31 @@ from sklearn import tree
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn import preprocessing
+from sklearn.tree import _tree
+
+
+def tree_to_code(tree, feature_names):
+    tree_ = tree.tree_
+    feature_name = [
+        feature_names[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+        for i in tree_.feature
+    ]
+    feature_names = [f.replace(" ", "_")[:-5] for f in feature_names]
+    print("def predict({}):".format(", ".join(feature_names)))
+
+    def recurse(node, depth):
+        indent = "    " * depth
+        if tree_.feature[node] != _tree.TREE_UNDEFINED:
+            name = feature_name[node]
+            threshold = tree_.threshold[node]
+            print("{}if {} <= {}:".format(indent, name, np.round(threshold, 2)))
+            recurse(tree_.children_left[node], depth + 1)
+            print("{}else:  # if {} > {}".format(indent, name, np.round(threshold, 2)))
+            recurse(tree_.children_right[node], depth + 1)
+        else:
+            print("{}return {}".format(indent, tree_.value[node]))
+
+    recurse(0, 1)
 
 
 def reg_metrics(y_t, y_pred, X_t):
@@ -56,7 +81,6 @@ def export_plots(mod):
     plt.clf()
 
 
-le = preprocessing.LabelEncoder()
 model = DecisionTreeRegressor(max_depth=4)
 file_name = "./Data/data2021-09-13.csv"
 data = pd.read_csv(file_name)
@@ -76,11 +100,11 @@ X = data[["initial_j_1", "initial_j_2", "initial_j_3", "initial_j_4", "initial_s
 target_cols = ["diff_j_" + i.__str__() for i in range(1, 5)]
 target_cols.extend(["diff_s_" + i.__str__() for i in range(1, 9)])
 Y = data[target_cols]
+# X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
 
 for i in range(1, 5):
-
-    y_train_i = y_train["diff_j_" + i.__str__()]
+    y_train_i = y_train["diff_s_" + i.__str__()]
     model.fit(X_train, y_train_i)
     predicted = model.predict(X_test)
     df = pd.DataFrame(data=[list(y_test["diff_j_" + i.__str__()]), list(predicted)]).transpose()
@@ -92,17 +116,32 @@ for i in range(1, 5):
     # predicted = predicted[predicted > -10]
     scores = reg_metrics(df["test"], df["pred"], X_train)
     export_plots("j")
-for i in range(1, 9):
+    tree_to_code(model, X_train.columns)
 
-    y_train_i = y_train["diff_s_" + i.__str__()]
-    model.fit(X_train, y_train_i)
-    predicted = model.predict(X_test)
-    df = pd.DataFrame(data=[list(y_test["diff_s_" + i.__str__()]), list(predicted)]).transpose()
-    df.columns = ["test", "pred"]
-    df = df[df["test"] > -10]
-    df = df[df["pred"] > -10]
-    df = df[df["pred"] < 10]
-    df = df[df["test"] < 10]
-    # predicted = predicted[predicted > -10]
-    scores = reg_metrics(df["test"], df["pred"], X_train)
-    export_plots("s")
+# for i in range(1, 5):
+#     y_train_i = y_train["diff_j_" + i.__str__()]
+#     model.fit(X_train, y_train_i)
+#     predicted = model.predict(X_test)
+#     df = pd.DataFrame(data=[list(y_test["diff_j_" + i.__str__()]), list(predicted)]).transpose()
+#     df.columns = ["test", "pred"]
+#     df = df[df["test"] > -10]
+#     df = df[df["pred"] > -10]
+#     df = df[df["pred"] < 10]
+#     df = df[df["test"] < 10]
+#     # predicted = predicted[predicted > -10]
+#     scores = reg_metrics(df["test"], df["pred"], X_train)
+#     export_plots("j")
+#     tree_to_code(model, X_train.columns)
+# for i in range(1, 9):
+#     y_train_i = y_train["diff_s_" + i.__str__()]
+#     model.fit(X_train, y_train_i)
+#     predicted = model.predict(X_test)
+#     df = pd.DataFrame(data=[list(y_test["diff_s_" + i.__str__()]), list(predicted)]).transpose()
+#     df.columns = ["test", "pred"]
+#     df = df[df["test"] > -10]
+#     df = df[df["pred"] > -10]
+#     df = df[df["pred"] < 10]
+#     df = df[df["test"] < 10]
+#     # predicted = predicted[predicted > -10]
+#     scores = reg_metrics(df["test"], df["pred"], X_train)
+#     export_plots("s")
