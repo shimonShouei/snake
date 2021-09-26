@@ -69,7 +69,7 @@ def export_plots(mod):
                                     filled=True, rounded=True,
                                     special_characters=True)
     graph = graphviz.Source(dot_data)
-    graph.render("{}/snake_{}_{}".format(os.getenv('OUTPUTS_DIR'), mod, i.__str__()))
+    graph.save("snake_{}_{}".format(mod, i.__str__()), "{}".format(os.getenv('OUTPUTS_DIR')))
     explainer = shap.Explainer(model)
     shap_values = explainer(X)
     # visualize the first prediction's explanation
@@ -88,10 +88,9 @@ def export_plots(mod):
     plt.clf()
 
 
-model = DecisionTreeRegressor(max_depth=4)
 file_name = "{}/data2021-09-13.csv".format(os.getenv('DATA_DIR'))
 data = pd.read_csv(file_name)
-data.round(1)
+data = data.round(1)
 for i in range(1, 5):
     data["diff_j_" + i.__str__()] = data["final_j_" + i.__str__()] - data["initial_j_" + i.__str__()]
 # le.fit(data["command_{}".format(i)])
@@ -111,7 +110,8 @@ Y = data[target_cols]
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
 
 for i in range(1, 5):
-    y_train_i = y_train["diff_s_" + i.__str__()]
+    model = DecisionTreeRegressor(max_depth=4)
+    y_train_i = y_train["diff_j_" + i.__str__()]
     model.fit(X_train, y_train_i)
     predicted = model.predict(X_test)
     df = pd.DataFrame(data=[list(y_test["diff_j_" + i.__str__()]), list(predicted)]).transpose()
@@ -141,6 +141,7 @@ for i in range(1, 5):
 #     export_plots("j")
 #     tree_to_code(model, X_train.columns)
 for i in range(1, 9):
+    model = DecisionTreeRegressor(max_depth=4)
     y_train_i = y_train["diff_s_" + i.__str__()]
     model.fit(X_train, y_train_i)
     predicted = model.predict(X_test)
